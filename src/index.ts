@@ -1,9 +1,22 @@
-function redDot(cords:number[]) {
-    main.ctx.fillStyle = 'red';
-    main.ctx.beginPath();
-    main.ctx.arc(cords[0], cords[1], 3, 0, 2 * Math.PI, false);
-    main.ctx.fill();
-    main.ctx.closePath();
+// function redDot(cords:number[]) {
+//     main.ctx.fillStyle = 'red';
+//     main.ctx.beginPath();
+//     main.ctx.arc(cords[0], cords[1], 3, 0, 2 * Math.PI, false);
+//     main.ctx.fill();
+//     main.ctx.closePath();
+// }
+
+type TeamColor = {'skin': string, 'bullets': string};
+
+const TEAMS:{[key:string]:TeamColor} = {
+    'player': {
+        'skin': "grey",
+        'bullets': "#000000"
+    },
+    'enemy': {
+        'skin': "red",
+        'bullets': "#FF0000"
+    }
 }
 
 class Vector {
@@ -22,14 +35,12 @@ class Vector {
         let curVecCords = this.getCords();
         let plusVecCords = vec.getCords();
 
-        // let out = new Vector(
-        //     Math.sqrt((curVecCords[0]+plusVecCords[0]) ** 2 + (curVecCords[1]+plusVecCords[1]) ** 2),
-        //     Math.atan2((curVecCords[1]+plusVecCords[1]),(curVecCords[0]+plusVecCords[0])) // + ((curVecCords[1]+plusVecCords[1]) < 0 ? Math.PI : 0)
-        // );
-
         return Vector.cordsToVector([curVecCords[0]+plusVecCords[0], curVecCords[1]+plusVecCords[1]]); // out;
     }
 
+    /**
+     * Скалярное произведение
+     */
     mult(vec:Vector) {
         let curVecCords = this.getCords();
         let plusVecCords = vec.getCords();
@@ -63,7 +74,7 @@ class Player {
     static radius:number = 25;
     static sqrRadius:number = Player.radius**2;
 
-    constructor(public team:string = "grey") {}
+    constructor(public team:string = "player") {}
 
     hp:number = 100;
 
@@ -96,23 +107,21 @@ class Player {
         main.ctx.fillStyle = 'white';
         main.ctx.fill();
 
-        let tg = (mouse.y-center[1])/(mouse.x-center[0])
-        let atg = Math.atan(tg);
+        let atg = Math.atan2(mouse.y-center[1], mouse.x-center[0]);
 
-        if(mouse.x-center[0] < 0) atg += Math.PI
+        main.ctx.fillStyle    = TEAMS[this.team].skin;
+        main.ctx.strokeStyle  = TEAMS[this.team].skin;
 
         main.ctx.beginPath();
         main.ctx.arc(center[0], center[1], 13 * camera.scale, 0, 2 * Math.PI, false);
-        main.ctx.fillStyle = this.team;
         main.ctx.fill();
         main.ctx.closePath();
 
-        main.ctx.strokeStyle = this.team;
-        main.ctx.lineWidth = 15*camera.scale;
+        main.ctx.lineWidth = 15 * camera.scale;
 
         main.ctx.beginPath();
         main.ctx.moveTo(center[0], center[1]);
-        main.ctx.lineTo(center[0] + Math.cos(atg) * 2 * 10 * camera.scale, center[1] + Math.sin(atg) * 2 * 10 * camera.scale);
+        main.ctx.lineTo(center[0] + Math.cos(atg) * 20 * camera.scale, center[1] + Math.sin(atg) * 20 * camera.scale);
         main.ctx.stroke();
         main.ctx.closePath();
     }
@@ -151,14 +160,8 @@ class Player {
         this.x += cords[0];
         this.y += cords[1];
 
-        // this.speedVector.module*=0.75;
-
-        // console.log(!(this.keyPressed.ArrowUp || this.keyPressed.ArrowDown));
-
-        if(!(this.keyPressed.ArrowUp || this.keyPressed.ArrowDown)) {
-            this.speedVector = Vector.cordsToVector([cords[0], cords[1]*0.75]);
-        }
-
+        if(!(this.keyPressed.ArrowUp || this.keyPressed.ArrowDown)) this.speedVector = Vector.cordsToVector([cords[0], cords[1]*0.75]);
+        
         if(!(this.keyPressed.ArrowLeft || this.keyPressed.ArrowRight)) {
             cords = this.speedVector.getCords();
 
@@ -266,8 +269,6 @@ class WorldMap {
     }
 }
 
-
-
 class Main {
     // Элемент
     canvas:HTMLCanvasElement;
@@ -276,7 +277,7 @@ class Main {
     ctx:CanvasRenderingContext2D;
 
     // Объекты
-    players:Player[] = [];
+    player:Player    = new Player();
     walls:Wall[]     = [];
     units:Unite[]    = [];
 
@@ -294,7 +295,7 @@ class Main {
         this.ctx.canvas.width  = window.innerWidth;
         this.ctx.canvas.height = window.innerHeight;
 
-        this.players.push(new Player());
+        // this.players.push(new Player());
         this.walls.push(...world.walls)
     }
 
@@ -323,10 +324,13 @@ class Main {
     update() {
         this.ctx.clearRect(0,0,window.innerWidth,window.innerHeight);
 
-        this.players.forEach(player => {
-            player.move();
-            player.draw();
-        });
+        // this.players.forEach(player => {
+        //     player.move();
+        //     player.draw();
+        // });
+
+        this.player.move();
+        this.player.draw();
 
         this.units.forEach((unit, i) => {
             if(unit.removed) this.units.splice(i, 1);
@@ -345,11 +349,11 @@ class Main {
         
         this.ctx.font = `${fontSize}px serif`;
         this.ctx.fillStyle = "white"
-        this.ctx.fillText(`x:   ${main.players[0].x.toFixed(2)}`, 10, fontSize);
-        this.ctx.fillText(`y:   ${main.players[0].y.toFixed(2)}`, 10, fontSize*2);
-        this.ctx.fillText(`v:   ${main.players[0].speedVector.module.toFixed(2)}`, 10, fontSize*3);
+        this.ctx.fillText(`x:   ${main.player.x.toFixed(2)}`, 10, fontSize);
+        this.ctx.fillText(`y:   ${main.player.y.toFixed(2)}`, 10, fontSize*2);
+        this.ctx.fillText(`v:   ${main.player.speedVector.module.toFixed(2)}`, 10, fontSize*3);
         this.ctx.fillText(`fps: ${this.fps.toFixed(0)}`, 10, fontSize*4);
-        this.ctx.fillText(`hp:  ${main.players[0].hp.toFixed(2)}`, 10, fontSize*5);
+        this.ctx.fillText(`hp:  ${main.player.hp.toFixed(2)}`, 10, fontSize*5);
 
         const now = performance.now();
 
@@ -372,7 +376,7 @@ class Camera {
     }
 
     getCenter() {
-        // let mainPlayer = main.players[0];
+        // let mainPlayer = main.player;
 
         return [
             window.innerWidth/2 - ((mouse.x * 100 * this.scale)/(window.innerWidth/2)) + (100 * this.scale), // + (mainPlayer.vx * this.scale * 1.5),
@@ -384,7 +388,7 @@ class Camera {
      * Переводит координаты из абсолютных в координаты на canvas
      */
     translateCords(x:number,y:number) {
-        let player = main.players[0];
+        let player = main.player;
         let center = this.center;
 
         return [(x-player.x)*this.scale+center[0], (y-player.y)*this.scale+center[1]];
@@ -407,13 +411,13 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 document.addEventListener('keydown', function(e) {
-    if(keys.includes(e.code)) main.players[0].keyPressed[e.key] = true;
-    if(alterKeys.includes(e.code)) main.players[0].keyPressed[keys[alterKeys.indexOf(e.code)]] = true;
+    if(keys.includes(e.code)) main.player.keyPressed[e.key] = true;
+    if(alterKeys.includes(e.code)) main.player.keyPressed[keys[alterKeys.indexOf(e.code)]] = true;
 });
 
 document.addEventListener('keyup', function(e) {
-    if(keys.includes(e.code)) main.players[0].keyPressed[e.key] = false;
-    if(alterKeys.includes(e.code)) main.players[0].keyPressed[keys[alterKeys.indexOf(e.code)]] = false;
+    if(keys.includes(e.code)) main.player.keyPressed[e.key] = false;
+    if(alterKeys.includes(e.code)) main.player.keyPressed[keys[alterKeys.indexOf(e.code)]] = false;
 });
 
 document.addEventListener("mousemove", function (e) {
