@@ -171,6 +171,15 @@ class Player {
         // if(!(this.keyPressed.ArrowUp || this.keyPressed.ArrowDown || this.keyPressed.ArrowLeft || this.keyPressed.ArrowRight)) this.speedVector.module*=0.75;
         if(this.speedVector.module<0.3) this.speedVector.module = 0;
     }
+
+    shot() {
+        let center = camera.center;
+        let atg = Math.atan2(mouse.y-center[1], mouse.x-center[0]);
+
+        let bullet = new Bullet(this.x, this.y, 30, atg);
+
+        main.units.push(bullet);
+    }
 }
 
 class Wall {
@@ -203,11 +212,15 @@ class Wall {
 
 class Bullet extends Unite {
     size:number = 10;
+    sqrSize:number = this.size**2;
     color:string = "#FF0000FF";
     damage:number = 15;
+    speedVector:Vector;
 
-    constructor(public x:number, public y:number, public v:number, public angle:number) {
+    constructor(public x:number, public y:number, v:number, angle:number, public team:string = 'player') {
         super();
+
+        this.speedVector = new Vector(v, angle);
     }
 
     draw(): void {
@@ -221,8 +234,47 @@ class Bullet extends Unite {
     }
 
     move(): void {
-        this.x += this.v * Math.cos(this.angle);
-        this.y += this.v * Math.sin(this.angle);
+        if(this.speedVector.module < 0.3) return this.remove();
+
+        let cords = this.speedVector.getCords();
+
+        main.walls.forEach((wall) => {
+            let futureDistance = wall.sqrDistance(this.x+cords[0], this.y+cords[1]);
+
+            if(futureDistance < this.sqrSize) {
+                let distance = wall.sqrDistance(this.x, this.y);
+
+                // console.log(Math.sqrt(distance)-this.size);
+
+                let fnd = wall.nearDot(this.x+cords[0], this.y+cords[1]);
+                let angle = Math.atan2(this.y + cords[1] - fnd[1], this.x + cords[0] - fnd[0]);
+                let p = new Vector(Math.sqrt(distance)-Math.sqrt(futureDistance), angle);
+
+                console.log(Math.sqrt(distance)-Math.sqrt(futureDistance))
+
+                this.speedVector = this.speedVector.plus(p);
+
+                cords = this.speedVector.getCords();
+
+                this.x += cords[0];
+                this.y += cords[1];
+
+                this.speedVector = new Vector(0,0);
+                this.remove();
+
+                cords = this.speedVector.getCords();
+            }
+        });
+        
+        cords = this.speedVector.getCords();
+
+        this.x += cords[0];
+        this.y += cords[1];
+
+        this.speedVector.module*=0.95;
+
+        // this.x += this.v * Math.cos(this.angle);
+        // this.y += this.v * Math.sin(this.angle);
     }
 
     sqrDistance(x: number, y: number): number {
@@ -425,6 +477,14 @@ document.addEventListener("mousemove", function (e) {
 
     camera.center = camera.getCenter();
 }, false);
+
+document.addEventListener("mousedown", function (e) {
+    mouse = { x: e.clientX, y: e.clientY }
+
+    camera.center = camera.getCenter();
+
+    main.player.shot();
+});
 
 window.addEventListener("resize", () => {
     main.ctx.canvas.width  = window.innerWidth;
